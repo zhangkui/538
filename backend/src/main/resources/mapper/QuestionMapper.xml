@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.exam.mapper.QuestionMapper">
+    
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO question (title, description, requirements, sample_input, sample_output, 
+                              reference_answer, score, difficulty, created_by)
+        VALUES
+        <foreach collection="list" item="q" separator=",">
+            (#{q.title}, #{q.description}, #{q.requirements}, #{q.sampleInput}, 
+             #{q.sampleOutput}, #{q.referenceAnswer}, #{q.score}, #{q.difficulty}, #{q.createdBy})
+        </foreach>
+    </insert>
+    
+</mapper>
