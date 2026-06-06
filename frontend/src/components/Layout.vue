@@ -27,9 +27,17 @@
             <el-icon><Document /></el-icon>
             <template #title>题目列表</template>
           </el-menu-item>
+          <el-menu-item index="/student/exams">
+            <el-icon><Tickets /></el-icon>
+            <template #title>试卷列表</template>
+          </el-menu-item>
           <el-menu-item index="/student/submissions">
             <el-icon><Finished /></el-icon>
             <template #title>我的提交</template>
+          </el-menu-item>
+          <el-menu-item index="/student/exam-records">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>试卷记录</template>
           </el-menu-item>
         </template>
         
@@ -43,9 +51,17 @@
             <el-icon><Edit /></el-icon>
             <template #title>题目管理</template>
           </el-menu-item>
+          <el-menu-item index="/teacher/exam-papers">
+            <el-icon><Tickets /></el-icon>
+            <template #title>试卷管理</template>
+          </el-menu-item>
           <el-menu-item index="/teacher/grading">
             <el-icon><Stamp /></el-icon>
             <template #title>批改作业</template>
+          </el-menu-item>
+          <el-menu-item index="/teacher/exam-grading">
+            <el-icon><DataAnalysis /></el-icon>
+            <template #title>试卷批改</template>
           </el-menu-item>
         </template>
       </el-menu>

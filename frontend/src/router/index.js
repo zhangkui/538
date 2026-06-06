@@ -44,6 +44,30 @@ const routes = [
         component: () => import('@/views/student/Submissions.vue'),
         meta: { title: '我的提交', role: 'STUDENT' }
       },
+      {
+        path: 'student/exams',
+        name: 'StudentExams',
+        component: () => import('@/views/student/ExamList.vue'),
+        meta: { title: '试卷列表', role: 'STUDENT' }
+      },
+      {
+        path: 'student/exam/:id',
+        name: 'StudentExamTaking',
+        component: () => import('@/views/student/ExamTaking.vue'),
+        meta: { title: '考试作答', role: 'STUDENT' }
+      },
+      {
+        path: 'student/exam-result/:id',
+        name: 'StudentExamResult',
+        component: () => import('@/views/student/ExamResult.vue'),
+        meta: { title: '考试结果', role: 'STUDENT' }
+      },
+      {
+        path: 'student/exam-records',
+        name: 'StudentExamRecords',
+        component: () => import('@/views/student/ExamRecords.vue'),
+        meta: { title: '试卷记录', role: 'STUDENT' }
+      },
       // 教师路由
       {
         path: 'teacher/students',
@@ -62,6 +86,30 @@ const routes = [
         name: 'TeacherGrading',
         component: () => import('@/views/teacher/Grading.vue'),
         meta: { title: '批改作业', role: 'TEACHER' }
+      },
+      {
+        path: 'teacher/exam-papers',
+        name: 'TeacherExamPapers',
+        component: () => import('@/views/teacher/ExamPapers.vue'),
+        meta: { title: '试卷管理', role: 'TEACHER' }
+      },
+      {
+        path: 'teacher/exam-grading',
+        name: 'TeacherExamGradingList',
+        component: () => import('@/views/teacher/ExamGradingList.vue'),
+        meta: { title: '试卷批改', role: 'TEACHER' }
+      },
+      {
+        path: 'teacher/exam-grading/:id',
+        name: 'TeacherExamGradingDetail',
+        component: () => import('@/views/teacher/ExamGradingDetail.vue'),
+        meta: { title: '批改答卷', role: 'TEACHER' }
+      },
+      {
+        path: 'teacher/exam-submissions/:id',
+        name: 'TeacherExamSubmissionDetail',
+        component: () => import('@/views/teacher/ExamGradingDetail.vue'),
+        meta: { title: '查看答卷', role: 'TEACHER' }
       }
     ]
   },
