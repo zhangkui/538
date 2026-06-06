@@ -98,6 +98,11 @@ public class TeacherController {
     @PostMapping("/questions")
     @Operation(summary = "创建题目")
     public ApiResponse<Question> createQuestion(@Valid @RequestBody QuestionDTO dto) {
+        String validationError = validateChoiceQuestion(dto);
+        if (validationError != null) {
+            return ApiResponse.error(400, validationError);
+        }
+        
         Long teacherId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         
         Question question = new Question();
@@ -109,9 +114,43 @@ public class TeacherController {
         question.setReferenceAnswer(dto.getReferenceAnswer());
         question.setScore(dto.getScore());
         question.setDifficulty(dto.getDifficulty() != null ? dto.getDifficulty() : "MEDIUM");
+        question.setQuestionType(dto.getQuestionType() != null ? dto.getQuestionType() : "PROGRAMMING");
+        question.setOptions(dto.getOptions());
+        question.setCorrectAnswer(dto.getCorrectAnswer());
+        question.setAnswerExplanation(dto.getAnswerExplanation());
         question.setCreatedBy(teacherId);
         
         return ApiResponse.success(questionService.create(question));
+    }
+    
+    private String validateChoiceQuestion(QuestionDTO dto) {
+        String type = dto.getQuestionType();
+        if (type == null || "PROGRAMMING".equals(type)) {
+            return null;
+        }
+        
+        if (dto.getOptions() == null || dto.getOptions().trim().isEmpty()) {
+            return "选择题必须提供选项";
+        }
+        
+        if (dto.getCorrectAnswer() == null || dto.getCorrectAnswer().trim().isEmpty()) {
+            return "选择题必须提供正确答案";
+        }
+        
+        String correct = dto.getCorrectAnswer().trim().toUpperCase();
+        String[] correctArr = correct.split(",");
+        
+        if ("SINGLE_CHOICE".equals(type)) {
+            if (correctArr.length != 1) {
+                return "单选题只能有1个正确答案";
+            }
+        } else if ("MULTIPLE_CHOICE".equals(type)) {
+            if (correctArr.length < 2) {
+                return "多选题必须有2个及以上正确答案，否则应归类为单选题";
+            }
+        }
+        
+        return null;
     }
     
     @PostMapping("/questions/import")
@@ -131,12 +170,16 @@ public class TeacherController {
                 Question q = new Question();
                 q.setTitle(getCellValue(row.getCell(0)));
                 q.setDescription(getCellValue(row.getCell(1)));
-                q.setRequirements(getCellValue(row.getCell(2)));
-                q.setSampleInput(getCellValue(row.getCell(3)));
-                q.setSampleOutput(getCellValue(row.getCell(4)));
-                q.setReferenceAnswer(getCellValue(row.getCell(5)));
-                q.setScore(parseIntOrDefault(getCellValue(row.getCell(6)), 10));
-                q.setDifficulty(getCellValue(row.getCell(7)));
+                q.setQuestionType(getCellValueOrDefault(row.getCell(2), "PROGRAMMING"));
+                q.setOptions(getCellValue(row.getCell(3)));
+                q.setCorrectAnswer(getCellValue(row.getCell(4)));
+                q.setAnswerExplanation(getCellValue(row.getCell(5)));
+                q.setRequirements(getCellValue(row.getCell(6)));
+                q.setSampleInput(getCellValue(row.getCell(7)));
+                q.setSampleOutput(getCellValue(row.getCell(8)));
+                q.setReferenceAnswer(getCellValue(row.getCell(9)));
+                q.setScore(parseIntOrDefault(getCellValue(row.getCell(10)), 10));
+                q.setDifficulty(getCellValueOrDefault(row.getCell(11), "MEDIUM"));
                 q.setCreatedBy(teacherId);
                 
                 if (q.getTitle() != null && !q.getTitle().isEmpty()) {
@@ -160,6 +203,11 @@ public class TeacherController {
     @PutMapping("/questions/{id}")
     @Operation(summary = "更新题目")
     public ApiResponse<Question> updateQuestion(@PathVariable Long id, @Valid @RequestBody QuestionDTO dto) {
+        String validationError = validateChoiceQuestion(dto);
+        if (validationError != null) {
+            return ApiResponse.error(400, validationError);
+        }
+        
         Question question = questionService.findById(id);
         if (question == null) {
             return ApiResponse.error(404, "题目不存在");
@@ -173,6 +221,10 @@ public class TeacherController {
         question.setReferenceAnswer(dto.getReferenceAnswer());
         question.setScore(dto.getScore());
         question.setDifficulty(dto.getDifficulty());
+        question.setQuestionType(dto.getQuestionType());
+        question.setOptions(dto.getOptions());
+        question.setCorrectAnswer(dto.getCorrectAnswer());
+        question.setAnswerExplanation(dto.getAnswerExplanation());
         
         return ApiResponse.success(questionService.update(question));
     }
@@ -224,6 +276,11 @@ public class TeacherController {
             case NUMERIC -> String.valueOf((int) cell.getNumericCellValue());
             default -> null;
         };
+    }
+    
+    private String getCellValueOrDefault(Cell cell, String defaultValue) {
+        String value = getCellValue(cell);
+        return (value == null || value.isEmpty()) ? defaultValue : value;
     }
     
     private int parseIntOrDefault(String value, int defaultValue) {

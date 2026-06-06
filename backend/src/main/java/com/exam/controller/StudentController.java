@@ -28,8 +28,11 @@ public class StudentController {
     @Operation(summary = "获取所有题目列表")
     public ApiResponse<List<Question>> getQuestions() {
         List<Question> questions = questionService.findAll();
-        // 隐藏参考答案
-        questions.forEach(q -> q.setReferenceAnswer(null));
+        questions.forEach(q -> {
+            q.setReferenceAnswer(null);
+            q.setCorrectAnswer(null);
+            q.setAnswerExplanation(null);
+        });
         return ApiResponse.success(questions);
     }
     
@@ -40,8 +43,9 @@ public class StudentController {
         if (question == null) {
             return ApiResponse.error(404, "题目不存在");
         }
-        // 隐藏参考答案
         question.setReferenceAnswer(null);
+        question.setCorrectAnswer(null);
+        question.setAnswerExplanation(null);
         return ApiResponse.success(question);
     }
     
@@ -49,7 +53,8 @@ public class StudentController {
     @Operation(summary = "提交答案")
     public ApiResponse<Submission> submitAnswer(@Valid @RequestBody SubmissionDTO dto) {
         Long studentId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Submission submission = submissionService.submit(studentId, dto.getQuestionId(), dto.getAnswerCode());
+        Submission submission = submissionService.submit(studentId, dto.getQuestionId(), 
+                dto.getAnswerCode(), dto.getSelectedAnswer());
         return ApiResponse.success("提交成功", submission);
     }
     

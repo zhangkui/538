@@ -8,6 +8,6 @@ public interface SubmissionService {
     List<Submission> findByStudent(Long studentId);
     List<Submission> findAll();
     List<Submission> findPending();
-    Submission submit(Long studentId, Long questionId, String answerCode);
+    Submission submit(Long studentId, Long questionId, String answerCode, String selectedAnswer);
     Submission grade(Long submissionId, Long graderId, Integer score, String feedback);
 }

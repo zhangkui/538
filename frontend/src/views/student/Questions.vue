@@ -15,6 +15,11 @@
           <el-option label="中等" value="MEDIUM" />
           <el-option label="困难" value="HARD" />
         </el-select>
+        <el-select v-model="filterType" placeholder="题型筛选" clearable style="width: 140px">
+          <el-option label="编程题" value="PROGRAMMING" />
+          <el-option label="单选题" value="SINGLE_CHOICE" />
+          <el-option label="多选题" value="MULTIPLE_CHOICE" />
+        </el-select>
       </div>
     </div>
     
@@ -29,6 +34,9 @@
           <div class="question-header">
             <h3 class="question-title">{{ question.title }}</h3>
             <div class="question-tags">
+              <el-tag :type="getQuestionTypeTag(question.questionType)" size="small">
+                {{ getQuestionTypeText(question.questionType) }}
+              </el-tag>
               <span :class="['difficulty-tag', question.difficulty?.toLowerCase()]">
                 {{ getDifficultyText(question.difficulty) }}
               </span>
@@ -62,6 +70,7 @@ const loading = ref(false)
 const questions = ref([])
 const searchKeyword = ref('')
 const filterDifficulty = ref('')
+const filterType = ref('')
 
 const filteredQuestions = computed(() => {
   return questions.value.filter(q => {
@@ -69,7 +78,8 @@ const filteredQuestions = computed(() => {
       q.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
       q.description.toLowerCase().includes(searchKeyword.value.toLowerCase())
     const matchDifficulty = !filterDifficulty.value || q.difficulty === filterDifficulty.value
-    return matchKeyword && matchDifficulty
+    const matchType = !filterType.value || q.questionType === filterType.value
+    return matchKeyword && matchDifficulty && matchType
   })
 })
 
@@ -100,6 +110,24 @@ function getDifficultyText(difficulty) {
     'HARD': '困难'
   }
   return map[difficulty] || '未知'
+}
+
+function getQuestionTypeText(type) {
+  const map = {
+    'PROGRAMMING': '编程题',
+    'SINGLE_CHOICE': '单选题',
+    'MULTIPLE_CHOICE': '多选题'
+  }
+  return map[type] || '编程题'
+}
+
+function getQuestionTypeTag(type) {
+  const map = {
+    'PROGRAMMING': '',
+    'SINGLE_CHOICE': 'warning',
+    'MULTIPLE_CHOICE': 'success'
+  }
+  return map[type] || ''
 }
 
 function truncateText(text, maxLength) {

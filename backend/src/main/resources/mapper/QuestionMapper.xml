@@ -5,11 +5,13 @@
     
     <insert id="batchInsert" parameterType="java.util.List">
         INSERT INTO question (title, description, requirements, sample_input, sample_output, 
-                              reference_answer, score, difficulty, created_by)
+                              reference_answer, score, difficulty, question_type, options, 
+                              correct_answer, answer_explanation, created_by)
         VALUES
         <foreach collection="list" item="q" separator=",">
             (#{q.title}, #{q.description}, #{q.requirements}, #{q.sampleInput}, 
-             #{q.sampleOutput}, #{q.referenceAnswer}, #{q.score}, #{q.difficulty}, #{q.createdBy})
+             #{q.sampleOutput}, #{q.referenceAnswer}, #{q.score}, #{q.difficulty},
+             #{q.questionType}, #{q.options}, #{q.correctAnswer}, #{q.answerExplanation}, #{q.createdBy})
         </foreach>
     </insert>
     

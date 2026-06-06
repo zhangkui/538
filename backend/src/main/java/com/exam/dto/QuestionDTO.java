@@ -23,4 +23,11 @@ public class QuestionDTO {
     private Integer score;
     
     private String difficulty;
+    
+    @NotBlank(message = "题型不能为空")
+    private String questionType;
+    
+    private String options;
+    private String correctAnswer;
+    private String answerExplanation;
 }

@@ -21,16 +21,19 @@ public interface QuestionMapper {
     List<Question> findByCreator(Long createdBy);
     
     @Insert("INSERT INTO question (title, description, requirements, sample_input, sample_output, " +
-            "reference_answer, score, difficulty, created_by) VALUES (#{title}, #{description}, " +
-            "#{requirements}, #{sampleInput}, #{sampleOutput}, #{referenceAnswer}, #{score}, " +
-            "#{difficulty}, #{createdBy})")
+            "reference_answer, score, difficulty, question_type, options, correct_answer, answer_explanation, created_by) " +
+            "VALUES (#{title}, #{description}, #{requirements}, #{sampleInput}, #{sampleOutput}, " +
+            "#{referenceAnswer}, #{score}, #{difficulty}, #{questionType}, #{options}, #{correctAnswer}, " +
+            "#{answerExplanation}, #{createdBy})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Question question);
     
     @Update("UPDATE question SET title = #{title}, description = #{description}, " +
             "requirements = #{requirements}, sample_input = #{sampleInput}, " +
             "sample_output = #{sampleOutput}, reference_answer = #{referenceAnswer}, " +
-            "score = #{score}, difficulty = #{difficulty}, updated_at = NOW() WHERE id = #{id}")
+            "score = #{score}, difficulty = #{difficulty}, question_type = #{questionType}, " +
+            "options = #{options}, correct_answer = #{correctAnswer}, answer_explanation = #{answerExplanation}, " +
+            "updated_at = NOW() WHERE id = #{id}")
     int update(Question question);
     
     @Delete("DELETE FROM question WHERE id = #{id}")

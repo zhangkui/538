@@ -31,6 +31,11 @@
         <el-option label="中等" value="MEDIUM" />
         <el-option label="困难" value="HARD" />
       </el-select>
+      <el-select v-model="filterType" placeholder="题型筛选" clearable style="width: 140px">
+        <el-option label="编程题" value="PROGRAMMING" />
+        <el-option label="单选题" value="SINGLE_CHOICE" />
+        <el-option label="多选题" value="MULTIPLE_CHOICE" />
+      </el-select>
     </div>
     
     <div v-loading="loading" class="questions-content">
@@ -45,6 +50,13 @@
             <el-link type="primary" @click="showEditDialog(row)">
               {{ row.title }}
             </el-link>
+          </template>
+        </el-table-column>
+        <el-table-column prop="questionType" label="题型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getQuestionTypeTag(row.questionType)" size="small">
+              {{ getQuestionTypeText(row.questionType) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="difficulty" label="难度" width="100" align="center">
@@ -81,7 +93,6 @@
       </el-table>
     </div>
     
-    <!-- 新建/编辑题目弹窗 -->
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑题目' : '新建题目'"
@@ -94,6 +105,18 @@
         :rules="rules"
         label-width="100px"
       >
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="题型" prop="questionType">
+              <el-radio-group v-model="form.questionType">
+                <el-radio value="PROGRAMMING">编程题</el-radio>
+                <el-radio value="SINGLE_CHOICE">单选题</el-radio>
+                <el-radio value="MULTIPLE_CHOICE">多选题</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
         <el-form-item label="题目标题" prop="title">
           <el-input v-model="form.title" placeholder="请输入题目标题" />
         </el-form-item>
@@ -124,46 +147,113 @@
           />
         </el-form-item>
         
-        <el-form-item label="要求说明">
-          <el-input
-            v-model="form.requirements"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入具体要求（可选）"
-          />
-        </el-form-item>
+        <template v-if="form.questionType === 'PROGRAMMING'">
+          <el-form-item label="要求说明">
+            <el-input
+              v-model="form.requirements"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入具体要求（可选）"
+            />
+          </el-form-item>
+          
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="示例输入">
+                <el-input
+                  v-model="form.sampleInput"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="示例输入（可选）"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="示例输出">
+                <el-input
+                  v-model="form.sampleOutput"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="示例输出（可选）"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <el-form-item label="参考答案">
+            <el-input
+              v-model="form.referenceAnswer"
+              type="textarea"
+              :rows="6"
+              placeholder="请输入参考答案代码（可选，仅老师可见）"
+            />
+          </el-form-item>
+        </template>
         
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="示例输入">
-              <el-input
-                v-model="form.sampleInput"
-                type="textarea"
-                :rows="3"
-                placeholder="示例输入（可选）"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="示例输出">
-              <el-input
-                v-model="form.sampleOutput"
-                type="textarea"
-                :rows="3"
-                placeholder="示例输出（可选）"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="参考答案">
-          <el-input
-            v-model="form.referenceAnswer"
-            type="textarea"
-            :rows="6"
-            placeholder="请输入参考答案代码（可选，仅老师可见）"
-          />
-        </el-form-item>
+        <template v-else>
+          <el-form-item label="选项">
+            <div class="options-list">
+              <div
+                v-for="(opt, idx) in optionList"
+                :key="idx"
+                class="option-item"
+              >
+                <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
+                <el-input
+                  v-model="optionList[idx]"
+                  :placeholder="`请输入选项 ${String.fromCharCode(65 + idx)} 的内容`"
+                  @input="updateOptions"
+                />
+                <el-checkbox
+                  v-if="form.questionType === 'SINGLE_CHOICE'"
+                  v-model="singleCorrect"
+                  :label="String.fromCharCode(65 + idx)"
+                  @change="onSingleCorrectChange(String.fromCharCode(65 + idx))"
+                >正确</el-checkbox>
+                <el-checkbox
+                  v-else
+                  v-model="multiCorrect"
+                  :label="String.fromCharCode(65 + idx)"
+                  @change="updateCorrectAnswer"
+                >正确</el-checkbox>
+                <el-button
+                  v-if="optionList.length > 2"
+                  type="danger"
+                  link
+                  @click="removeOption(idx)"
+                >删除</el-button>
+              </div>
+            </div>
+            <el-button type="primary" plain size="small" @click="addOption">
+              <el-icon><Plus /></el-icon>
+              添加选项
+            </el-button>
+          </el-form-item>
+          
+          <el-form-item label="正确答案" prop="correctAnswer">
+            <el-input
+              v-model="form.correctAnswer"
+              placeholder="单选如：A，多选如：A,C,D"
+            />
+            <div class="form-tip">
+              <template v-if="form.questionType === 'SINGLE_CHOICE'">
+                单选题只能有 1 个正确答案
+              </template>
+              <template v-else>
+                多选题必须有 2 个及以上正确答案，用英文逗号分隔
+              </template>
+            </div>
+          </el-form-item>
+          
+          <el-form-item label="答案解析">
+            <el-input
+              v-model="form.answerExplanation"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入答案解析/讲解（学生提交后可见）"
+            />
+          </el-form-item>
+        </template>
       </el-form>
       
       <template #footer>
@@ -174,7 +264,6 @@
       </template>
     </el-dialog>
     
-    <!-- 批量导入弹窗 -->
     <el-dialog
       v-model="importDialogVisible"
       title="批量导入题目"
@@ -191,7 +280,10 @@
           <template #default>
             <ul class="tips-list">
               <li>请使用Excel文件（.xlsx格式）</li>
-              <li>列顺序：标题、描述、要求、示例输入、示例输出、参考答案、分值、难度</li>
+              <li>列顺序：标题、描述、题型、选项、正确答案、答案解析、要求、示例输入、示例输出、参考答案、分值、难度</li>
+              <li>题型可选：PROGRAMMING/SINGLE_CHOICE/MULTIPLE_CHOICE</li>
+              <li>选项格式：JSON数组，如["A.选项1","B.选项2"]</li>
+              <li>正确答案：单选如A，多选如A,C,D</li>
               <li>难度可选：EASY/MEDIUM/HARD</li>
             </ul>
           </template>
@@ -224,7 +316,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion, importQuestions } from '@/api/teacher'
 import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
@@ -235,12 +327,17 @@ const importing = ref(false)
 const questions = ref([])
 const searchKeyword = ref('')
 const filterDifficulty = ref('')
+const filterType = ref('')
 const dialogVisible = ref(false)
 const importDialogVisible = ref(false)
 const isEdit = ref(false)
 const editId = ref(null)
 const selectedFile = ref(null)
 const formRef = ref(null)
+
+const optionList = ref([])
+const singleCorrect = ref('')
+const multiCorrect = ref([])
 
 const form = reactive({
   title: '',
@@ -250,14 +347,20 @@ const form = reactive({
   sampleOutput: '',
   referenceAnswer: '',
   score: 10,
-  difficulty: 'MEDIUM'
+  difficulty: 'MEDIUM',
+  questionType: 'PROGRAMMING',
+  options: '',
+  correctAnswer: '',
+  answerExplanation: ''
 })
 
 const rules = {
   title: [{ required: true, message: '请输入题目标题', trigger: 'blur' }],
   description: [{ required: true, message: '请输入题目描述', trigger: 'blur' }],
   score: [{ required: true, message: '请输入分值', trigger: 'blur' }],
-  difficulty: [{ required: true, message: '请选择难度', trigger: 'change' }]
+  difficulty: [{ required: true, message: '请选择难度', trigger: 'change' }],
+  questionType: [{ required: true, message: '请选择题型', trigger: 'change' }],
+  correctAnswer: [{ required: true, message: '请输入正确答案', trigger: 'blur' }]
 }
 
 const filteredQuestions = computed(() => {
@@ -265,8 +368,18 @@ const filteredQuestions = computed(() => {
     const matchKeyword = !searchKeyword.value ||
       q.title.toLowerCase().includes(searchKeyword.value.toLowerCase())
     const matchDifficulty = !filterDifficulty.value || q.difficulty === filterDifficulty.value
-    return matchKeyword && matchDifficulty
+    const matchType = !filterType.value || q.questionType === filterType.value
+    return matchKeyword && matchDifficulty && matchType
   })
+})
+
+watch(() => form.questionType, () => {
+  form.correctAnswer = ''
+  singleCorrect.value = ''
+  multiCorrect.value = []
+  if (form.questionType !== 'PROGRAMMING' && optionList.value.length === 0) {
+    optionList.value = ['', '', '', '']
+  }
 })
 
 onMounted(() => {
@@ -294,6 +407,13 @@ function resetForm() {
   form.referenceAnswer = ''
   form.score = 10
   form.difficulty = 'MEDIUM'
+  form.questionType = 'PROGRAMMING'
+  form.options = ''
+  form.correctAnswer = ''
+  form.answerExplanation = ''
+  optionList.value = []
+  singleCorrect.value = ''
+  multiCorrect.value = []
 }
 
 function showCreateDialog() {
@@ -314,25 +434,81 @@ function showEditDialog(question) {
     sampleOutput: question.sampleOutput || '',
     referenceAnswer: question.referenceAnswer || '',
     score: question.score,
-    difficulty: question.difficulty
+    difficulty: question.difficulty,
+    questionType: question.questionType || 'PROGRAMMING',
+    options: question.options || '',
+    correctAnswer: question.correctAnswer || '',
+    answerExplanation: question.answerExplanation || ''
   })
+  
+  if (question.options) {
+    try {
+      optionList.value = JSON.parse(question.options).map(o => {
+        const m = o.match(/^[A-Z]\.\s*(.*)$/)
+        return m ? m[1] : o
+      })
+    } catch (e) {
+      optionList.value = ['', '', '', '']
+    }
+  } else {
+    optionList.value = ['', '', '', '']
+  }
+  
+  if (question.correctAnswer) {
+    if (form.questionType === 'SINGLE_CHOICE') {
+      singleCorrect.value = question.correctAnswer
+    } else {
+      multiCorrect.value = question.correctAnswer.split(',').map(s => s.trim())
+    }
+  }
+  
   dialogVisible.value = true
 }
 
 async function handleSubmit() {
-  const valid = await formRef.value.validate().catch(() => false)
+  let valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
+  
+  if (form.questionType !== 'PROGRAMMING') {
+    const validOpts = optionList.value.filter(o => o && o.trim())
+    if (validOpts.length < 2) {
+      ElMessage.error('选择题至少需要2个选项')
+      return
+    }
+    
+    if (form.questionType === 'SINGLE_CHOICE') {
+      if (!form.correctAnswer || form.correctAnswer.split(',').length !== 1) {
+        ElMessage.error('单选题只能有1个正确答案')
+        return
+      }
+    } else if (form.questionType === 'MULTIPLE_CHOICE') {
+      if (!form.correctAnswer || form.correctAnswer.split(',').length < 2) {
+        ElMessage.error('多选题必须有2个及以上正确答案')
+        return
+      }
+    }
+  }
   
   submitting.value = true
   try {
+    const submitData = { ...form }
+    if (form.questionType !== 'PROGRAMMING') {
+      const opts = optionList.value
+        .filter(o => o && o.trim())
+        .map((o, i) => `${String.fromCharCode(65 + i)}. ${o.trim()}`)
+      submitData.options = JSON.stringify(opts)
+    }
+    
     const res = isEdit.value
-      ? await updateQuestion(editId.value, form)
-      : await createQuestion(form)
+      ? await updateQuestion(editId.value, submitData)
+      : await createQuestion(submitData)
     
     if (res.code === 200) {
       ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
       dialogVisible.value = false
       await loadQuestions()
+    } else {
+      ElMessage.error(res.message || '操作失败')
     }
   } finally {
     submitting.value = false
@@ -349,6 +525,35 @@ async function handleDelete(id) {
   } catch (error) {
     console.error('删除失败', error)
   }
+}
+
+function addOption() {
+  if (optionList.value.length < 8) {
+    optionList.value.push('')
+  } else {
+    ElMessage.warning('最多支持8个选项')
+  }
+}
+
+function removeOption(idx) {
+  optionList.value.splice(idx, 1)
+  updateOptions()
+}
+
+function updateOptions() {
+  const opts = optionList.value
+    .filter(o => o && o.trim())
+    .map((o, i) => `${String.fromCharCode(65 + i)}. ${o.trim()}`)
+  form.options = JSON.stringify(opts)
+}
+
+function onSingleCorrectChange(val) {
+  singleCorrect.value = val
+  form.correctAnswer = val
+}
+
+function updateCorrectAnswer() {
+  form.correctAnswer = multiCorrect.value.join(',')
 }
 
 function showImportDialog() {
@@ -377,6 +582,8 @@ async function handleImport() {
       ElMessage.success(res.message || '导入成功')
       importDialogVisible.value = false
       await loadQuestions()
+    } else {
+      ElMessage.error(res.message || '导入失败')
     }
   } finally {
     importing.value = false
@@ -385,8 +592,10 @@ async function handleImport() {
 
 function downloadTemplate() {
   const templateData = [
-    ['标题', '描述', '要求', '示例输入', '示例输出', '参考答案', '分值', '难度'],
-    ['实现单例模式', '请编写一个Java类实现单例模式', '1. 确保类只有一个实例\n2. 提供全局访问点', '无', '每次调用返回同一实例', 'public class Singleton {...}', 15, 'MEDIUM']
+    ['标题', '描述', '题型', '选项', '正确答案', '答案解析', '要求', '示例输入', '示例输出', '参考答案', '分值', '难度'],
+    ['实现单例模式', '请编写一个Java类实现单例模式', 'PROGRAMMING', '', '', '', '1. 确保类只有一个实例', '无', '同一实例', 'public class Singleton...', 15, 'MEDIUM'],
+    ['Java中哪个关键字用于定义常量？', '选择正确的关键字', 'SINGLE_CHOICE', '["A. static","B. final","C. const","D. abstract"]', 'B', 'final用于定义常量', '', '', '', '', 5, 'EASY'],
+    ['以下哪些是Java的基本数据类型？', '选择所有基本类型', 'MULTIPLE_CHOICE', '["A. int","B. String","C. boolean","D. Integer","E. double"]', 'A,C,E', '基本类型有8种', '', '', '', '', 5, 'EASY']
   ]
   
   const ws = XLSX.utils.aoa_to_sheet(templateData)
@@ -400,6 +609,16 @@ function downloadTemplate() {
 function getDifficultyText(difficulty) {
   const map = { 'EASY': '简单', 'MEDIUM': '中等', 'HARD': '困难' }
   return map[difficulty] || '未知'
+}
+
+function getQuestionTypeText(type) {
+  const map = { 'PROGRAMMING': '编程题', 'SINGLE_CHOICE': '单选题', 'MULTIPLE_CHOICE': '多选题' }
+  return map[type] || '编程题'
+}
+
+function getQuestionTypeTag(type) {
+  const map = { 'PROGRAMMING': '', 'SINGLE_CHOICE': 'warning', 'MULTIPLE_CHOICE': 'success' }
+  return map[type] || ''
 }
 
 function formatDate(dateStr) {
@@ -450,6 +669,35 @@ function formatDate(dateStr) {
   &.easy { background: rgba(103, 194, 58, 0.1); color: #67c23a; }
   &.medium { background: rgba(230, 162, 60, 0.1); color: #e6a23c; }
   &.hard { background: rgba(245, 108, 108, 0.1); color: #f56c6c; }
+}
+
+.options-list {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  
+  .option-label {
+    font-weight: 600;
+    color: #303133;
+    width: 24px;
+    flex-shrink: 0;
+  }
+  
+  .el-input {
+    flex: 1;
+  }
+}
+
+.form-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
 }
 
 .import-tips {

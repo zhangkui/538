@@ -17,10 +17,18 @@
           </template>
         </el-table-column>
         
+        <el-table-column prop="questionType" label="题型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getQuestionTypeTag(row.questionType)" size="small">
+              {{ getQuestionTypeText(row.questionType) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 'GRADED' ? 'success' : 'warning'" size="small">
-              {{ row.status === 'GRADED' ? '已批改' : '待批改' }}
+              {{ getStatusText(row) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -34,7 +42,7 @@
         
         <el-table-column prop="graderName" label="批改老师" width="120" align="center">
           <template #default="{ row }">
-            {{ row.graderName || '-' }}
+            {{ row.graderName || (row.questionType && row.questionType !== 'PROGRAMMING' && row.status === 'GRADED' ? '系统自动' : '-') }}
           </template>
         </el-table-column>
         
@@ -54,7 +62,6 @@
       </el-table>
     </div>
     
-    <!-- 详情弹窗 -->
     <el-dialog
       v-model="dialogVisible"
       title="提交详情"
@@ -66,16 +73,32 @@
           <el-descriptions-item label="题目">
             {{ currentSubmission.questionTitle }}
           </el-descriptions-item>
+          <el-descriptions-item label="题型">
+            <el-tag :type="getQuestionTypeTag(currentSubmission.questionType)" size="small">
+              {{ getQuestionTypeText(currentSubmission.questionType) }}
+            </el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="currentSubmission.status === 'GRADED' ? 'success' : 'warning'">
-              {{ currentSubmission.status === 'GRADED' ? '已批改' : '待批改' }}
+              {{ getStatusText(currentSubmission) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="得分" v-if="currentSubmission.status === 'GRADED'">
             <span class="score-large">{{ currentSubmission.score }}</span>
+            <el-tag
+              v-if="currentSubmission.questionType && currentSubmission.questionType !== 'PROGRAMMING'"
+              :type="isAnswerCorrect ? 'success' : 'danger'"
+              size="small"
+              style="margin-left: 8px"
+            >
+              {{ isAnswerCorrect ? '回答正确' : '回答错误' }}
+            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="批改老师" v-if="currentSubmission.graderName">
             {{ currentSubmission.graderName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="批改老师" v-else-if="currentSubmission.questionType && currentSubmission.questionType !== 'PROGRAMMING' && currentSubmission.status === 'GRADED'">
+            系统自动判分
           </el-descriptions-item>
           <el-descriptions-item label="提交时间">
             {{ formatDate(currentSubmission.createdAt) }}
@@ -83,11 +106,36 @@
           <el-descriptions-item label="批改时间" v-if="currentSubmission.gradedAt">
             {{ formatDate(currentSubmission.gradedAt) }}
           </el-descriptions-item>
+          <el-descriptions-item
+            v-if="currentSubmission.questionType && currentSubmission.questionType !== 'PROGRAMMING'"
+            label="你的选择"
+            :span="2"
+          >
+            <el-tag type="primary">{{ currentSubmission.selectedAnswer || '未作答' }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item
+            v-if="currentSubmission.questionType && currentSubmission.questionType !== 'PROGRAMMING' && currentSubmission.status === 'GRADED'"
+            label="正确答案"
+            :span="2"
+          >
+            <el-tag type="success">{{ currentSubmission.correctAnswer || '-' }}</el-tag>
+          </el-descriptions-item>
         </el-descriptions>
         
-        <div class="detail-section">
+        <div v-if="isProgramming && currentSubmission.answerCode" class="detail-section">
           <h4>提交代码</h4>
           <pre class="code-block">{{ currentSubmission.answerCode }}</pre>
+        </div>
+        
+        <div
+          v-if="!isProgramming && currentSubmission.answerExplanation"
+          class="detail-section"
+        >
+          <h4>
+            <el-icon><Reading /></el-icon>
+            答案解析
+          </h4>
+          <div class="explanation-box">{{ currentSubmission.answerExplanation }}</div>
         </div>
         
         <div v-if="currentSubmission.feedback" class="detail-section">
@@ -107,9 +155,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMySubmissions } from '@/api/student'
+import { getMySubmissions, getQuestion } from '@/api/student'
+import { Reading } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -117,6 +166,16 @@ const loading = ref(false)
 const submissions = ref([])
 const dialogVisible = ref(false)
 const currentSubmission = ref(null)
+const questionDetail = ref(null)
+
+const isProgramming = computed(() => {
+  return !currentSubmission.value?.questionType || currentSubmission.value.questionType === 'PROGRAMMING'
+})
+
+const isAnswerCorrect = computed(() => {
+  if (!currentSubmission.value || !questionDetail.value) return false
+  return currentSubmission.value.score === questionDetail.value.score
+})
 
 onMounted(() => {
   loadSubmissions()
@@ -134,14 +193,40 @@ async function loadSubmissions() {
   }
 }
 
-function showDetail(submission) {
+async function showDetail(submission) {
   currentSubmission.value = submission
+  questionDetail.value = null
+  
+  try {
+    const qRes = await getQuestion(submission.questionId)
+    if (qRes.code === 200) {
+      questionDetail.value = qRes.data
+    }
+  } catch (e) {}
+  
   dialogVisible.value = true
 }
 
 function goToQuestion(questionId) {
   dialogVisible.value = false
   router.push(`/student/question/${questionId}`)
+}
+
+function getQuestionTypeText(type) {
+  const map = { 'PROGRAMMING': '编程题', 'SINGLE_CHOICE': '单选题', 'MULTIPLE_CHOICE': '多选题' }
+  return map[type] || '编程题'
+}
+
+function getQuestionTypeTag(type) {
+  const map = { 'PROGRAMMING': '', 'SINGLE_CHOICE': 'warning', 'MULTIPLE_CHOICE': 'success' }
+  return map[type] || ''
+}
+
+function getStatusText(row) {
+  if (row.questionType && row.questionType !== 'PROGRAMMING' && row.status === 'GRADED') {
+    return '已自动判分'
+  }
+  return row.status === 'GRADED' ? '已批改' : '待批改'
 }
 
 function formatDate(dateStr) {
@@ -187,6 +272,9 @@ function formatDate(dateStr) {
     color: #303133;
     margin-bottom: 12px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 }
 
@@ -211,5 +299,15 @@ function formatDate(dateStr) {
   color: #606266;
   line-height: 1.6;
   border-left: 4px solid #409eff;
+}
+
+.explanation-box {
+  background: #ecf5ff;
+  padding: 16px;
+  border-radius: 8px;
+  color: #606266;
+  line-height: 1.8;
+  border-left: 4px solid #67c23a;
+  white-space: pre-wrap;
 }
 </style>

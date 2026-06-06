@@ -9,6 +9,7 @@ public class Submission {
     private Long studentId;
     private Long questionId;
     private String answerCode;
+    private String selectedAnswer;
     private Integer score;
     private String feedback;
     private String status;
@@ -17,8 +18,10 @@ public class Submission {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    // 额外字段
     private String studentName;
     private String questionTitle;
     private String graderName;
+    private String questionType;
+    private String correctAnswer;
+    private String answerExplanation;
 }
